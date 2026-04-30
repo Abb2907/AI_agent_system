@@ -635,9 +635,15 @@
             let stepsHtml = '';
             if (steps && steps.length > 0) {
                 const stepsId = 'steps-' + Date.now();
+                const toolSteps = steps.filter(s => s.type === 'tool');
+                const totalStep = steps.find(s => s.type === 'answer');
+                const totalTime = totalStep && totalStep.total_duration_s ? ` · ${totalStep.total_duration_s}s` : '';
+                const toolNames = toolSteps.map(s => s.tool_name).filter(Boolean);
+                const toolLabel = toolNames.length > 0 ? ` → ${toolNames.join(' → ')}` : '';
+
                 stepsHtml = `
                     <div class="steps-toggle" onclick="document.getElementById('${stepsId}').classList.toggle('open')">
-                        ⚙️ Show agent reasoning (${steps.length} steps)
+                        🧠 Show reasoning (${steps.length} steps${toolLabel}${totalTime})
                     </div>
                     <div class="steps-panel" id="${stepsId}">
                         ${steps.map(s => formatStep(s)).join('')}
@@ -673,6 +679,32 @@
         }
 
         function formatStep(step) {
+            const duration = step.duration_s ? ` <span style="color:#52526a">(${step.duration_s}s)</span>` : '';
+
+            if (step.type === 'thinking') {
+                const plan = step.plan || {};
+                const action = plan.action === 'use_tool'
+                    ? `Use tool <span style="color:#22c55e;font-weight:600">${escapeHtml(plan.tool_name || '')}</span>`
+                    : 'Generate final answer';
+                return `<div class="step">
+                    <div class="step-label">🧠 Thinking — Iteration ${step.iteration}${duration}</div>
+                    <div class="step-plan">Decision: ${action}</div>
+                    ${plan.parameters ? `<div style="color:#8b8b9e;margin-top:0.25rem">Input: "${escapeHtml(plan.parameters)}"</div>` : ''}
+                </div>`;
+            }
+            if (step.type === 'tool') {
+                return `<div class="step">
+                    <div class="step-label">⚡ Tool: ${escapeHtml(step.tool_name)}${duration}</div>
+                    <div class="step-tool">Input: ${escapeHtml(step.tool_input)}</div>
+                    <div class="step-result">Output: ${escapeHtml(String(step.tool_output).substring(0, 500))}</div>
+                </div>`;
+            }
+            if (step.type === 'answer') {
+                const total = step.total_duration_s ? ` — Total: ${step.total_duration_s}s` : '';
+                return `<div class="step"><div class="step-label">✅ Final Answer Generated${duration}${total}</div></div>`;
+            }
+
+            // Fallback for legacy step format
             if (step.plan) {
                 return `<div class="step"><div class="step-label">Plan</div><div class="step-plan">${escapeHtml(JSON.stringify(step.plan))}</div></div>`;
             }
