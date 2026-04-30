@@ -20,13 +20,21 @@ Rules:
 - Use "calculator" for any math/arithmetic expressions.
 - Use "retriever" for questions about documents, files, or stored knowledge.
 - Use "web_search" for questions about real-world facts, people, places, current events, or topics not covered by local documents.
-- Use "respond" for general knowledge questions you can answer directly.
+- Use "respond" when you already have enough information from previous tool results to answer the query.
+- You can chain multiple tools: retrieve data first, then calculate, then respond.
+- If previous tool results already provide enough information, use "respond".
 - Do NOT include any explanation, only the JSON object.
-"""
+{tools_used_note}"""
 
 
-def plan(query: str, tools: list[BaseTool], context: str = "") -> dict:
+def plan(query: str, tools: list[BaseTool], context: str = "", tools_used: list[str] | None = None) -> dict:
     """Decide whether to use a tool or respond directly.
+
+    Args:
+        query: The user's question
+        tools: Available tools
+        context: Context from previous steps
+        tools_used: List of tools already used in this chain
 
     Returns a dict with keys:
         action: "use_tool" or "respond"
@@ -34,7 +42,15 @@ def plan(query: str, tools: list[BaseTool], context: str = "") -> dict:
         parameters: (optional) input string for the tool
     """
     tools_desc = "\n".join(f"- {t.name}: {t.description}" for t in tools)
-    system_prompt = PLANNER_SYSTEM_PROMPT.format(tools_description=tools_desc)
+
+    tools_used_note = ""
+    if tools_used:
+        tools_used_note = f"\nTools already used in this chain: {', '.join(tools_used)}. Only use another tool if more information is needed."
+
+    system_prompt = PLANNER_SYSTEM_PROMPT.format(
+        tools_description=tools_desc,
+        tools_used_note=tools_used_note,
+    )
 
     user_message = f"User query: {query}"
     if context:

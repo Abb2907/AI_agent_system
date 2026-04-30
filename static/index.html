@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Agent System</title>
+    <title>AI Copilot</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -11,6 +11,76 @@
             background: #0f1117;
             color: #e4e4e7;
             height: 100vh;
+            display: flex;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #1a1b23;
+            border-right: 1px solid #2d2d3a;
+            display: flex;
+            flex-direction: column;
+            transition: transform 0.3s;
+        }
+        .sidebar-header {
+            padding: 1rem;
+            border-bottom: 1px solid #2d2d3a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .sidebar-header h2 { font-size: 1rem; color: #fff; }
+        .new-chat-btn {
+            padding: 0.5rem 1rem;
+            background: #3b82f6;
+            border: none;
+            border-radius: 0.5rem;
+            color: #fff;
+            font-size: 0.8rem;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .new-chat-btn:hover { background: #2563eb; }
+        .conversations-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0.5rem;
+        }
+        .conv-item {
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            cursor: pointer;
+            font-size: 0.85rem;
+            color: #a5a5be;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 2px;
+        }
+        .conv-item:hover { background: #2d2d3a; color: #fff; }
+        .conv-item.active { background: #3b82f6; color: #fff; }
+        .sidebar-footer {
+            padding: 1rem;
+            border-top: 1px solid #2d2d3a;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .user-info { font-size: 0.85rem; color: #a5a5be; }
+        .logout-btn {
+            padding: 0.4rem 0.8rem;
+            background: #ef4444;
+            border: none;
+            border-radius: 0.4rem;
+            color: #fff;
+            font-size: 0.75rem;
+            cursor: pointer;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
             display: flex;
             flex-direction: column;
         }
@@ -22,11 +92,7 @@
             align-items: center;
             gap: 0.75rem;
         }
-        header h1 {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #fff;
-        }
+        header h1 { font-size: 1.25rem; font-weight: 600; color: #fff; }
         header .badge {
             font-size: 0.7rem;
             background: #22c55e;
@@ -43,15 +109,8 @@
             flex-direction: column;
             gap: 1.5rem;
         }
-        .message {
-            max-width: 800px;
-            width: 100%;
-            margin: 0 auto;
-        }
-        .message.user {
-            display: flex;
-            justify-content: flex-end;
-        }
+        .message { max-width: 800px; width: 100%; margin: 0 auto; }
+        .message.user { display: flex; justify-content: flex-end; }
         .message.user .bubble {
             background: #3b82f6;
             color: #fff;
@@ -66,10 +125,7 @@
             padding: 1rem 1.25rem;
             max-width: 85%;
         }
-        .message.assistant .answer {
-            line-height: 1.6;
-            white-space: pre-wrap;
-        }
+        .message.assistant .answer { line-height: 1.6; white-space: pre-wrap; }
         .steps-toggle {
             margin-top: 0.75rem;
             font-size: 0.8rem;
@@ -92,17 +148,11 @@
             font-family: 'JetBrains Mono', monospace;
         }
         .steps-panel.open { display: block; }
-        .step {
-            padding: 0.5rem 0;
-            border-bottom: 1px solid #1e1f2e;
-        }
+        .step { padding: 0.5rem 0; border-bottom: 1px solid #1e1f2e; }
         .step:last-child { border-bottom: none; }
         .step-label {
-            color: #8b8b9e;
-            font-size: 0.7rem;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.25rem;
+            color: #8b8b9e; font-size: 0.7rem;
+            text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 0.25rem;
         }
         .step-plan { color: #f59e0b; }
         .step-tool { color: #22c55e; }
@@ -144,16 +194,10 @@
         }
         #send-btn:hover { background: #2563eb; }
         #send-btn:disabled { background: #1e3a5f; cursor: not-allowed; }
-        .loading {
-            display: inline-flex;
-            gap: 4px;
-            align-items: center;
-        }
+        .loading { display: inline-flex; gap: 4px; align-items: center; }
         .loading span {
-            width: 6px; height: 6px;
-            background: #8b8b9e;
-            border-radius: 50%;
-            animation: bounce 1.4s infinite ease-in-out;
+            width: 6px; height: 6px; background: #8b8b9e;
+            border-radius: 50%; animation: bounce 1.4s infinite ease-in-out;
         }
         .loading span:nth-child(2) { animation-delay: 0.2s; }
         .loading span:nth-child(3) { animation-delay: 0.4s; }
@@ -161,12 +205,105 @@
             0%, 80%, 100% { transform: scale(0); }
             40% { transform: scale(1); }
         }
+
+        /* Auth Screen */
+        .auth-screen {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            width: 100%;
+        }
+        .auth-card {
+            background: #1a1b23;
+            border: 1px solid #2d2d3a;
+            border-radius: 1rem;
+            padding: 2.5rem;
+            width: 100%;
+            max-width: 400px;
+        }
+        .auth-card h2 {
+            margin-bottom: 0.5rem;
+            color: #fff;
+            font-size: 1.5rem;
+        }
+        .auth-card p {
+            color: #8b8b9e;
+            margin-bottom: 1.5rem;
+            font-size: 0.9rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.85rem;
+            color: #a5a5be;
+            margin-bottom: 0.4rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border-radius: 0.5rem;
+            border: 1px solid #2d2d3a;
+            background: #0f1117;
+            color: #e4e4e7;
+            font-size: 0.9rem;
+            outline: none;
+        }
+        .form-group input:focus { border-color: #3b82f6; }
+        .auth-btn {
+            width: 100%;
+            padding: 0.85rem;
+            background: #3b82f6;
+            border: none;
+            border-radius: 0.5rem;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+        }
+        .auth-btn:hover { background: #2563eb; }
+        .auth-switch {
+            text-align: center;
+            margin-top: 1rem;
+            font-size: 0.85rem;
+            color: #8b8b9e;
+        }
+        .auth-switch a {
+            color: #3b82f6;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .auth-error {
+            background: #3b1111;
+            border: 1px solid #ef4444;
+            color: #fca5a5;
+            padding: 0.6rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        /* Welcome screen */
+        .welcome {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            flex: 1;
+            padding: 2rem;
+        }
+        .welcome h2 { font-size: 1.5rem; margin-bottom: 0.5rem; color: #fff; }
+        .welcome p { color: #8b8b9e; margin-bottom: 2rem; }
         .examples {
-            max-width: 800px;
-            margin: 2rem auto;
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
             gap: 0.75rem;
+            max-width: 700px;
+            width: 100%;
         }
         .example-card {
             padding: 1rem;
@@ -180,145 +317,391 @@
         }
         .example-card:hover { border-color: #3b82f6; color: #e4e4e7; }
         .example-card .icon { font-size: 1.2rem; margin-bottom: 0.5rem; }
+
+        .hidden { display: none !important; }
     </style>
 </head>
 <body>
-    <header>
-        <h1>AI Agent System</h1>
-        <span class="badge">ONLINE</span>
-    </header>
-
-    <div class="chat-container" id="chat">
-        <div class="examples" id="examples">
-            <div class="example-card" onclick="sendQuery('What is 125 * 48 + 320?')">
-                <div class="icon">🧮</div>
-                Calculator: "What is 125 * 48 + 320?"
-            </div>
-            <div class="example-card" onclick="sendQuery('Explain how RAG systems work')">
-                <div class="icon">📄</div>
-                Retriever: "Explain how RAG systems work"
-            </div>
-            <div class="example-card" onclick="sendQuery('Who is Alan Turing?')">
-                <div class="icon">🌐</div>
-                Web Search: "Who is Alan Turing?"
-            </div>
-            <div class="example-card" onclick="sendQuery('What is machine learning?')">
-                <div class="icon">💬</div>
-                Direct: "What is machine learning?"
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="auth-screen">
+        <div class="auth-card">
+            <h2 id="auth-title">Sign In</h2>
+            <p id="auth-subtitle">Welcome back to AI Copilot</p>
+            <div id="auth-error" class="auth-error"></div>
+            <form id="auth-form">
+                <div class="form-group hidden" id="username-group">
+                    <label for="auth-username">Username</label>
+                    <input type="text" id="auth-username" placeholder="Choose a username">
+                </div>
+                <div class="form-group">
+                    <label for="auth-email">Email</label>
+                    <input type="email" id="auth-email" placeholder="you@example.com" required>
+                </div>
+                <div class="form-group">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" placeholder="Your password" required>
+                </div>
+                <button type="submit" class="auth-btn" id="auth-submit-btn">Sign In</button>
+            </form>
+            <div class="auth-switch">
+                <span id="auth-switch-text">Don't have an account? </span>
+                <a id="auth-switch-link" onclick="toggleAuthMode()">Sign Up</a>
             </div>
         </div>
     </div>
 
-    <div class="input-area">
-        <div class="input-wrapper">
-            <input type="text" id="query-input" placeholder="Ask anything... (math, documents, web search, or general)" autocomplete="off">
-            <button id="send-btn" onclick="submitQuery()">Send</button>
+    <!-- App Screen -->
+    <div id="app-screen" class="hidden" style="display:none; width:100%; height:100vh;">
+        <!-- Sidebar -->
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h2>Conversations</h2>
+                <button class="new-chat-btn" onclick="newConversation()">+ New</button>
+            </div>
+            <div class="conversations-list" id="conversations-list"></div>
+            <div class="sidebar-footer">
+                <span class="user-info" id="user-info"></span>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
+        </div>
+
+        <!-- Main -->
+        <div class="main-content">
+            <header>
+                <h1>AI Copilot</h1>
+                <span class="badge">v2.0</span>
+            </header>
+
+            <div class="chat-container" id="chat">
+                <div class="welcome" id="welcome">
+                    <h2>What can I help you with?</h2>
+                    <p>I can search, calculate, retrieve documents, and chain tools together.</p>
+                    <div class="examples">
+                        <div class="example-card" onclick="sendQuery('What is 125 * 48 + 320?')">
+                            <div class="icon">🧮</div>
+                            Calculate: "125 * 48 + 320"
+                        </div>
+                        <div class="example-card" onclick="sendQuery('Explain how RAG systems work')">
+                            <div class="icon">📄</div>
+                            Retrieve: "How RAG works"
+                        </div>
+                        <div class="example-card" onclick="sendQuery('Search for latest AI news and summarize')">
+                            <div class="icon">🌐</div>
+                            Search + Summarize
+                        </div>
+                        <div class="example-card" onclick="sendQuery('Find the population of France and calculate 10% of it')">
+                            <div class="icon">🔗</div>
+                            Tool Chain: Search → Calculate
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="input-area">
+                <div class="input-wrapper">
+                    <input type="text" id="query-input" placeholder="Ask anything..." autocomplete="off">
+                    <button id="send-btn" onclick="sendQuery()">Send</button>
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
-        const chat = document.getElementById('chat');
-        const input = document.getElementById('query-input');
-        const btn = document.getElementById('send-btn');
-        const examples = document.getElementById('examples');
+        // State
+        let token = localStorage.getItem('token');
+        let username = localStorage.getItem('username');
+        let currentConversationId = null;
+        let isSignup = false;
 
-        input.addEventListener('keydown', e => { if (e.key === 'Enter') submitQuery(); });
-
-        function sendQuery(text) {
-            input.value = text;
-            submitQuery();
+        // Init
+        if (token) {
+            showApp();
         }
 
-        async function submitQuery() {
-            const query = input.value.trim();
-            if (!query) return;
+        // Auth
+        function toggleAuthMode() {
+            isSignup = !isSignup;
+            document.getElementById('auth-title').textContent = isSignup ? 'Create Account' : 'Sign In';
+            document.getElementById('auth-subtitle').textContent = isSignup ? 'Join AI Copilot' : 'Welcome back to AI Copilot';
+            document.getElementById('username-group').classList.toggle('hidden', !isSignup);
+            document.getElementById('auth-submit-btn').textContent = isSignup ? 'Sign Up' : 'Sign In';
+            document.getElementById('auth-switch-text').textContent = isSignup ? 'Already have an account? ' : "Don't have an account? ";
+            document.getElementById('auth-switch-link').textContent = isSignup ? 'Sign In' : 'Sign Up';
+            document.getElementById('auth-error').style.display = 'none';
+        }
 
-            if (examples) examples.remove();
-            addMessage('user', query);
-            input.value = '';
-            btn.disabled = true;
+        document.getElementById('auth-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('auth-email').value;
+            const password = document.getElementById('auth-password').value;
+            const usernameVal = document.getElementById('auth-username').value;
+            const errorEl = document.getElementById('auth-error');
 
-            const loadingEl = addLoading();
+            const endpoint = isSignup ? '/api/auth/signup' : '/api/auth/login';
+            const body = isSignup
+                ? { email, password, username: usernameVal }
+                : { email, password };
 
             try {
-                const resp = await fetch('/api/query', {
+                const res = await fetch(endpoint, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ query })
+                    body: JSON.stringify(body),
                 });
-                const data = await resp.json();
-                loadingEl.remove();
-                addAssistantMessage(data.answer, data.steps);
+                const data = await res.json();
+                if (!res.ok) {
+                    errorEl.textContent = data.detail || 'Authentication failed';
+                    errorEl.style.display = 'block';
+                    return;
+                }
+                token = data.access_token;
+                username = data.username;
+                localStorage.setItem('token', token);
+                localStorage.setItem('username', username);
+                showApp();
             } catch (err) {
-                loadingEl.remove();
-                addAssistantMessage('Error: Failed to reach the agent. Is the server running?', []);
+                errorEl.textContent = 'Network error. Please try again.';
+                errorEl.style.display = 'block';
             }
+        });
 
-            btn.disabled = false;
-            input.focus();
+        function showApp() {
+            document.getElementById('auth-screen').style.display = 'none';
+            const appScreen = document.getElementById('app-screen');
+            appScreen.classList.remove('hidden');
+            appScreen.style.display = 'flex';
+            document.getElementById('user-info').textContent = username || 'User';
+            loadConversations();
         }
 
-        function addMessage(role, text) {
+        function logout() {
+            token = null;
+            username = null;
+            currentConversationId = null;
+            localStorage.removeItem('token');
+            localStorage.removeItem('username');
+            document.getElementById('auth-screen').style.display = 'flex';
+            document.getElementById('app-screen').style.display = 'none';
+            document.getElementById('app-screen').classList.add('hidden');
+        }
+
+        // Conversations
+        async function loadConversations() {
+            try {
+                const res = await fetch('/api/chat/conversations', {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (res.status === 401) { logout(); return; }
+                const convs = await res.json();
+                const list = document.getElementById('conversations-list');
+                list.innerHTML = convs.map(c => `
+                    <div class="conv-item ${c.id === currentConversationId ? 'active' : ''}"
+                         onclick="loadConversation('${c.id}')">
+                        ${escapeHtml(c.title)}
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Failed to load conversations:', err);
+            }
+        }
+
+        async function loadConversation(convId) {
+            currentConversationId = convId;
+            try {
+                const res = await fetch(`/api/chat/conversations/${convId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` },
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                const chat = document.getElementById('chat');
+                chat.innerHTML = '';
+                document.getElementById('welcome')?.remove();
+
+                data.messages.forEach(msg => {
+                    if (msg.role === 'user') {
+                        appendUserMessage(msg.content);
+                    } else {
+                        appendAssistantMessage(msg.content, msg.tool_steps || []);
+                    }
+                });
+                loadConversations();
+            } catch (err) {
+                console.error('Failed to load conversation:', err);
+            }
+        }
+
+        async function newConversation() {
+            currentConversationId = null;
+            const chat = document.getElementById('chat');
+            chat.innerHTML = `
+                <div class="welcome" id="welcome">
+                    <h2>What can I help you with?</h2>
+                    <p>I can search, calculate, retrieve documents, and chain tools together.</p>
+                    <div class="examples">
+                        <div class="example-card" onclick="sendQuery('What is 125 * 48 + 320?')">
+                            <div class="icon">🧮</div>
+                            Calculate: "125 * 48 + 320"
+                        </div>
+                        <div class="example-card" onclick="sendQuery('Explain how RAG systems work')">
+                            <div class="icon">📄</div>
+                            Retrieve: "How RAG works"
+                        </div>
+                        <div class="example-card" onclick="sendQuery('Search for latest AI news and summarize')">
+                            <div class="icon">🌐</div>
+                            Search + Summarize
+                        </div>
+                        <div class="example-card" onclick="sendQuery('Find the population of France and calculate 10% of it')">
+                            <div class="icon">🔗</div>
+                            Tool Chain: Search → Calculate
+                        </div>
+                    </div>
+                </div>
+            `;
+            loadConversations();
+        }
+
+        // Query
+        async function sendQuery(text) {
+            const input = document.getElementById('query-input');
+            const query = text || input.value.trim();
+            if (!query) return;
+            input.value = '';
+
+            // Remove welcome screen
+            const welcome = document.getElementById('welcome');
+            if (welcome) welcome.remove();
+
+            appendUserMessage(query);
+
+            const sendBtn = document.getElementById('send-btn');
+            sendBtn.disabled = true;
+
+            // Show loading
+            const loadingId = appendLoading();
+
+            try {
+                const res = await fetch('/api/query', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`,
+                    },
+                    body: JSON.stringify({
+                        query,
+                        conversation_id: currentConversationId,
+                    }),
+                });
+
+                removeLoading(loadingId);
+
+                if (res.status === 401) { logout(); return; }
+                if (res.status === 429) {
+                    appendAssistantMessage('Rate limit exceeded. Please wait a moment and try again.', []);
+                    return;
+                }
+
+                const data = await res.json();
+                if (!res.ok) {
+                    appendAssistantMessage(data.detail || 'An error occurred.', []);
+                    return;
+                }
+
+                currentConversationId = data.conversation_id;
+                appendAssistantMessage(data.answer, data.steps);
+                loadConversations();
+            } catch (err) {
+                removeLoading(loadingId);
+                appendAssistantMessage('Network error. Please check your connection.', []);
+            } finally {
+                sendBtn.disabled = false;
+            }
+        }
+
+        // UI Helpers
+        function appendUserMessage(text) {
+            const chat = document.getElementById('chat');
             const div = document.createElement('div');
-            div.className = `message ${role}`;
+            div.className = 'message user';
             div.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
         }
 
-        function addLoading() {
-            const div = document.createElement('div');
-            div.className = 'message assistant';
-            div.innerHTML = `<div class="bubble"><div class="loading"><span></span><span></span><span></span></div></div>`;
-            chat.appendChild(div);
-            chat.scrollTop = chat.scrollHeight;
-            return div;
-        }
-
-        function addAssistantMessage(answer, steps) {
+        function appendAssistantMessage(answer, steps) {
+            const chat = document.getElementById('chat');
             const div = document.createElement('div');
             div.className = 'message assistant';
 
             let stepsHtml = '';
             if (steps && steps.length > 0) {
-                const stepsContent = steps.map(s => formatStep(s)).join('');
+                const stepsId = 'steps-' + Date.now();
                 stepsHtml = `
-                    <div class="steps-toggle" onclick="this.nextElementSibling.classList.toggle('open')">
-                        ▶ Show reasoning steps (${steps.length})
+                    <div class="steps-toggle" onclick="document.getElementById('${stepsId}').classList.toggle('open')">
+                        ⚙️ Show agent reasoning (${steps.length} steps)
                     </div>
-                    <div class="steps-panel">${stepsContent}</div>
+                    <div class="steps-panel" id="${stepsId}">
+                        ${steps.map(s => formatStep(s)).join('')}
+                    </div>
                 `;
             }
 
-            div.innerHTML = `<div class="bubble"><div class="answer">${escapeHtml(answer)}</div>${stepsHtml}</div>`;
+            div.innerHTML = `
+                <div class="bubble">
+                    <div class="answer">${escapeHtml(answer)}</div>
+                    ${stepsHtml}
+                </div>
+            `;
             chat.appendChild(div);
             chat.scrollTop = chat.scrollHeight;
         }
 
+        function appendLoading() {
+            const chat = document.getElementById('chat');
+            const id = 'loading-' + Date.now();
+            const div = document.createElement('div');
+            div.className = 'message assistant';
+            div.id = id;
+            div.innerHTML = `<div class="bubble"><div class="loading"><span></span><span></span><span></span></div></div>`;
+            chat.appendChild(div);
+            chat.scrollTop = chat.scrollHeight;
+            return id;
+        }
+
+        function removeLoading(id) {
+            const el = document.getElementById(id);
+            if (el) el.remove();
+        }
+
         function formatStep(step) {
-            let html = '<div class="step">';
             if (step.plan) {
-                html += `<div class="step-label">Plan (Iteration ${step.iteration})</div>`;
-                html += `<div class="step-plan">Action: ${step.plan.action}`;
-                if (step.plan.tool_name) html += ` → ${step.plan.tool_name}`;
-                if (step.plan.parameters) html += ` (${step.plan.parameters})`;
-                html += '</div>';
-            } else if (step.tool_used) {
-                html += `<div class="step-label">Tool Execution</div>`;
-                html += `<div class="step-tool">🔧 ${step.tool_used}("${step.tool_input}")</div>`;
-                html += `<div class="step-result">→ ${step.tool_output?.substring(0, 200) || 'done'}${(step.tool_output?.length > 200) ? '...' : ''}</div>`;
-            } else if (step.final_answer) {
-                html += `<div class="step-label">Final Answer Generated</div>`;
+                return `<div class="step"><div class="step-label">Plan</div><div class="step-plan">${escapeHtml(JSON.stringify(step.plan))}</div></div>`;
             }
-            html += '</div>';
-            return html;
+            if (step.tool_used) {
+                return `<div class="step">
+                    <div class="step-label">Tool: ${escapeHtml(step.tool_used)}</div>
+                    <div class="step-tool">Input: ${escapeHtml(step.tool_input)}</div>
+                    <div class="step-result">Output: ${escapeHtml(String(step.tool_output).substring(0, 500))}</div>
+                </div>`;
+            }
+            if (step.final_answer) {
+                return `<div class="step"><div class="step-label">Final Answer Generated</div></div>`;
+            }
+            return '';
         }
 
         function escapeHtml(text) {
-            const d = document.createElement('div');
-            d.textContent = text;
-            return d.innerHTML;
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
         }
+
+        // Keyboard shortcut
+        document.getElementById('query-input').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendQuery();
+            }
+        });
     </script>
 </body>
 </html>

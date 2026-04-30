@@ -8,6 +8,10 @@ wheels/
 
 # Virtual environments
 .venv
+venv/
 
 # Environment secrets
 .env
+
+# SQLite database
+*.db
