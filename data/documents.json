@@ -1,0 +1,34 @@
+[
+  {
+    "id": "doc1",
+    "content": "Machine Learning Model Lifecycle: The ML model lifecycle consists of six phases - data collection, data preprocessing, feature engineering, model training, model evaluation, and deployment. Each phase requires careful consideration of data quality, bias detection, and reproducibility. Version control for models (MLOps) ensures traceability and rollback capability."
+  },
+  {
+    "id": "doc2",
+    "content": "Transformer Architecture: Transformers use self-attention mechanisms to process sequences in parallel rather than sequentially. The architecture consists of encoder and decoder stacks, each with multi-head attention layers and feed-forward networks. Key innovation: positional encoding allows the model to understand token order without recurrence. BERT uses encoder-only, GPT uses decoder-only architecture."
+  },
+  {
+    "id": "doc3",
+    "content": "RAG (Retrieval-Augmented Generation): RAG combines retrieval systems with generative models. Documents are chunked, embedded into vectors, and stored in a vector database. At query time, relevant chunks are retrieved via similarity search and injected into the LLM prompt as context. This reduces hallucination and allows grounding in private data without fine-tuning."
+  },
+  {
+    "id": "doc4",
+    "content": "AI Agent Architecture: An AI agent consists of a planner, executor, memory, and tool registry. The planner decomposes tasks into subtasks, the executor runs tools, and memory stores intermediate results. ReAct (Reasoning + Acting) is a popular framework where the agent alternates between thinking steps and action steps. Key challenges: loop detection, token budget management, and error recovery."
+  },
+  {
+    "id": "doc5",
+    "content": "Vector Databases and Embeddings: Text embeddings convert words and sentences into dense numerical vectors that capture semantic meaning. Popular embedding models include OpenAI text-embedding-ada-002, Sentence-BERT, and Cohere Embed. Vector databases like Pinecone, Weaviate, ChromaDB, and FAISS enable fast approximate nearest neighbor (ANN) search for similarity matching at scale."
+  },
+  {
+    "id": "doc6",
+    "content": "Fine-tuning vs Prompt Engineering: Fine-tuning adapts a pre-trained model's weights using domain-specific data, requiring GPU resources and labeled datasets. Prompt engineering crafts inputs to steer model behavior without changing weights. LoRA (Low-Rank Adaptation) reduces fine-tuning cost by training only small adapter matrices. For most production use cases, RAG + prompt engineering is preferred over fine-tuning."
+  },
+  {
+    "id": "doc7",
+    "content": "LLM Evaluation Metrics: Common metrics include BLEU and ROUGE for text similarity, perplexity for language model quality, and human evaluation for subjective quality. For RAG systems: faithfulness measures if answers are grounded in retrieved context, relevance measures if retrieved documents match the query, and answer correctness compares against ground truth."
+  },
+  {
+    "id": "doc8",
+    "content": "Production ML System Design: A production ML system requires data pipelines (ETL/ELT), feature stores, model registries, A/B testing infrastructure, monitoring dashboards, and automated retraining triggers. Key concerns: data drift detection, model degradation alerts, latency SLAs, and cost optimization. Tools: MLflow for tracking, Kubeflow for orchestration, Prometheus for monitoring."
+  }
+]
