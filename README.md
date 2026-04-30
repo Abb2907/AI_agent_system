@@ -257,6 +257,143 @@ This is **not** a tutorial chatbot that wraps an LLM API in a text box. This pro
 
 ---
 
+## Component Breakdown
+
+| Component | Role | Key Design |
+|-----------|------|------------|
+| **Planner** | Decides next action (use_tool or respond) | LLM-based; receives full context from prior steps; chain-aware |
+| **Executor** | Runs the selected tool safely | Registry pattern; try-catch isolation; returns strings only |
+| **Tool Registry** | Maps tool names → implementations | Abstract base class; plug-and-play new tools |
+| **Agent Loop** | Orchestrates planner-executor iterations | Max 5 iterations; timed; caches results |
+| **Cache** | LRU with TTL for repeated queries | SHA-256 keyed by query + recent history; 5-min expiry |
+| **Metrics** | Tracks latency, tool usage, cache hits | Exposed via `/metrics` endpoint; percentile-based |
+| **Auth** | JWT issuance and verification | Stateless; bcrypt hashing; rate-limited endpoints |
+| **Database** | Persistent state for users/conversations | SQLAlchemy ORM; PostgreSQL primary, SQLite fallback |
+
+---
+
+## Design Decisions
+
+| Decision | Rationale | Alternative Considered |
+|----------|-----------|----------------------|
+| **Planner-Executor over ReAct** | Cleaner separation of reasoning and action; easier to debug and test each in isolation | ReAct (single prompt loop) — less modular |
+| **Keyword retrieval over vector DB** | Zero infrastructure dependency for demo; fast iteration; easy to swap later | FAISS/Chroma — requires embedding pipeline |
+| **JWT over server sessions** | Stateless → horizontally scalable; no session store needed | Session cookies — simpler but stateful |
+| **PostgreSQL over MongoDB** | ACID transactions for chat history; relational model fits user→conversation→message hierarchy | MongoDB — flexible schema but weaker consistency |
+| **Groq over OpenAI** | 10x faster inference; free tier; compatible API surface | OpenAI — better models but slower/costlier |
+| **LRU cache over Redis** | In-process = zero latency; sufficient for single-instance deployment | Redis — needed for multi-instance but adds infra |
+| **AST calculator over `eval()`** | Prevents arbitrary code execution (security) | `eval()` — faster to implement but RCE risk |
+| **Rate limiting per-IP** | Prevents abuse without requiring auth on public endpoints | Per-user limiting — requires auth, more complex |
+
+---
+
+## Design Trade-offs
+
+| Trade-off | Current Choice | Impact |
+|-----------|---------------|--------|
+| **Context window (20 messages)** | Balance between relevance and token cost | More messages = better context but ~4x token cost |
+| **Cache TTL (5 min)** | Prevents stale answers; short enough for dynamic data | Longer TTL = more hits but potentially outdated |
+| **Max iterations (5)** | Prevents infinite loops; sufficient for 2-3 tool chains | Higher = handles more complex chains but risk of loops |
+| **Temperature (0.2)** | Low for deterministic tool selection | Higher = more creative but less reliable planning |
+| **Top-K retrieval (3 docs)** | Returns enough context without overwhelming LLM | Higher = better recall but adds noise + token cost |
+| **History for cache key (last 5)** | Enough to differentiate context without over-specificity | Full history = fewer hits; no history = stale answers |
+
+### Why These Values?
+
+- **20-message context**: At ~100 tokens/message, this uses ~2K tokens — leaving 6K for tool results and generation. Cost-effective on free tier.
+- **5-minute TTL**: Balances cache hit rate (~15-20% in typical usage) vs. freshness for web search results.
+- **3 retrieval docs**: Empirically, 3 chunks provide sufficient grounding without exceeding context. Adding more shows diminishing returns in answer quality.
+
+---
+
+## Observability
+
+The system exposes a `/metrics` endpoint with real-time operational data:
+
+```json
+GET /metrics
+
+{
+  "requests": {
+    "total": 142,
+    "errors": 3,
+    "avg_latency_s": 2.41,
+    "p50_s": 1.89,
+    "p95_s": 4.12,
+    "p99_s": 6.03
+  },
+  "cache": {
+    "hits": 28,
+    "misses": 114,
+    "hit_rate_pct": 19.7
+  },
+  "tools": {
+    "web_search": { "calls": 87, "success_rate_pct": 96.6, "avg_duration_s": 0.82 },
+    "calculator": { "calls": 43, "success_rate_pct": 100.0, "avg_duration_s": 0.001 },
+    "retriever":  { "calls": 52, "success_rate_pct": 100.0, "avg_duration_s": 0.003 }
+  },
+  "cache_detail": {
+    "size": 34,
+    "max_size": 128,
+    "hits": 28,
+    "misses": 114,
+    "hit_rate_pct": 19.7
+  }
+}
+```
+
+### What's Tracked
+
+- **Request latency** — End-to-end (P50, P95, P99) for SLA monitoring
+- **Tool success rates** — Detects external API failures (Wikipedia down, etc.)
+- **Cache performance** — Validates caching is reducing LLM calls
+
+---
+
+## Scaling Strategy
+
+```
+Current: Single-instance deployment (sufficient for <100 concurrent users)
+```
+
+### How this system would scale:
+
+| Bottleneck | Solution | Effort |
+|------------|----------|--------|
+| **API throughput** | Horizontal scaling behind load balancer (stateless JWT = no session affinity needed) | Low |
+| **Database** | Connection pooling (already via SQLAlchemy); read replicas for conversation history | Medium |
+| **LLM rate limits** | Request queue with backpressure; multiple API keys; model fallback chain | Medium |
+| **Cache invalidation** | Replace in-memory LRU with Redis for shared cache across instances | Low |
+| **Document retrieval** | Migrate from keyword search to vector DB (FAISS → Pinecone for managed scaling) | Medium |
+| **Background jobs** | Celery/RQ for document ingestion, embedding generation | Medium |
+
+### Deployment Architecture at Scale
+
+```
+                    ┌─────────────┐
+                    │  CDN/Nginx  │
+                    └──────┬──────┘
+                           │
+              ┌────────────┼────────────┐
+              ▼            ▼            ▼
+        ┌──────────┐ ┌──────────┐ ┌──────────┐
+        │ FastAPI  │ │ FastAPI  │ │ FastAPI  │
+        │ Instance │ │ Instance │ │ Instance │
+        └────┬─────┘ └────┬─────┘ └────┬─────┘
+             │             │             │
+             └──────┬──────┘─────────────┘
+                    │
+         ┌──────────┼──────────┐
+         ▼          ▼          ▼
+    ┌─────────┐ ┌───────┐ ┌────────┐
+    │PostgreSQL│ │ Redis │ │  Groq  │
+    │ (Primary │ │(Cache)│ │  LLM   │
+    │ +Replica)│ │       │ │  API   │
+    └──────────┘ └───────┘ └────────┘
+```
+
+---
+
 ## License
 
 MIT

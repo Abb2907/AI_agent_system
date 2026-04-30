@@ -3,7 +3,9 @@ import time
 
 from app.agent.executor import Executor
 from app.agent.planner import plan
+from app.services.cache import response_cache
 from app.services.llm import call_llm
+from app.services.metrics import metrics
 from app.services.prompt_builder import build_final_prompt
 from app.tools.base_tool import BaseTool
 
@@ -28,6 +30,15 @@ def run_agent(
         answer: final response string
         steps: list of intermediate steps for transparency
     """
+    # Check cache first (avoids full agent loop for repeated queries)
+    cached = response_cache.get(query, history)
+    if cached is not None:
+        metrics.record_cache_hit()
+        logger.info("Cache hit — returning cached response")
+        cached["steps"] = [{"type": "cache_hit", "iteration": 0, "duration_s": 0.0}] + cached.get("steps", [])
+        return cached
+
+    metrics.record_cache_miss()
     agent_start = time.time()
     executor = Executor(tools)
     steps: list[dict] = []
@@ -71,7 +82,11 @@ def run_agent(
                 "duration_s": gen_duration,
                 "total_duration_s": total_duration,
             })
-            return {"answer": answer, "steps": steps}
+
+            result = {"answer": answer, "steps": steps}
+            metrics.record_request(total_duration)
+            response_cache.put(query, history, result)
+            return result
 
         # Step 3: Execute tool (supports chaining)
         tool_name = plan_result.get("tool_name", "")
@@ -82,6 +97,10 @@ def run_agent(
         tool_result = executor.run(tool_name, parameters)
         exec_duration = round(time.time() - exec_start, 2)
         tools_used.append(tool_name)
+
+        # Track tool metrics
+        is_success = not tool_result.startswith("Error:") and not tool_result.startswith("Tool '")
+        metrics.record_tool_call(tool_name, exec_duration, is_success)
 
         steps.append({
             "type": "tool",
@@ -104,7 +123,11 @@ def run_agent(
         "reason": "max_iterations_reached",
         "total_duration_s": total_duration,
     })
-    return {"answer": answer, "steps": steps}
+
+    result = {"answer": answer, "steps": steps}
+    metrics.record_request(total_duration)
+    response_cache.put(query, history, result)
+    return result
 
 
 def _generate_final_answer(query: str, context: str) -> str:

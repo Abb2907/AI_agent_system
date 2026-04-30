@@ -703,6 +703,9 @@
                 const total = step.total_duration_s ? ` — Total: ${step.total_duration_s}s` : '';
                 return `<div class="step"><div class="step-label">✅ Final Answer Generated${duration}${total}</div></div>`;
             }
+            if (step.type === 'cache_hit') {
+                return `<div class="step"><div class="step-label">⚡ Cache Hit — Instant response (0ms)</div></div>`;
+            }
 
             // Fallback for legacy step format
             if (step.plan) {

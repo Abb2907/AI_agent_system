@@ -16,6 +16,8 @@ from app.db.database import init_db
 from app.routes.auth import router as auth_router
 from app.routes.chat import router as chat_router
 from app.routes.query import router as query_router
+from app.services.cache import response_cache
+from app.services.metrics import metrics
 
 load_dotenv()
 
@@ -78,6 +80,15 @@ def root():
 @app.get("/health")
 def health_check():
     return {"status": "ok", "version": "2.0.0"}
+
+
+@app.get("/metrics")
+def get_metrics():
+    """Observability endpoint: request latency, tool usage, cache stats."""
+    return {
+        **metrics.summary,
+        "cache_detail": response_cache.stats,
+    }
 
 
 @app.exception_handler(Exception)
